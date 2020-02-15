@@ -1,6 +1,5 @@
 var mocks = require('node-mocks-http');
 var should = require('should');
-var _ = require('lodash');
 var Transport = require('winston-transport');
 
 var expressWinston = require('../index.js');
@@ -30,7 +29,7 @@ class MockTransport extends Transport {
 }
 
 function mockReq(reqMock) {
-  var reqSpec = _.extend({
+  var reqSpec = Object.assign({
     method: 'GET',
     url: '/hello',
     headers: {
@@ -56,7 +55,7 @@ function mockRes() {
 }
 
 function loggerTestHelper(providedOptions) {
-  var options = _.extend({
+  var options = Object.assign({
     loggerOptions: null,
     req: null,
     res: null,
@@ -67,7 +66,7 @@ function loggerTestHelper(providedOptions) {
   }, providedOptions);
 
   var req = mockReq(options.req);
-  var res = _.extend(mockRes(), options.res);
+  var res = Object.assign(mockRes(), options.res);
 
   var result = {
     req: req,
@@ -76,7 +75,7 @@ function loggerTestHelper(providedOptions) {
   };
 
   return new Promise(function (resolve, reject) {
-    var middleware = expressWinston.logger(_.extend({
+    var middleware = expressWinston.logger(Object.assign({
       transports: [new MockTransport(result, options.transportOptions)]
     }, options.loggerOptions));
 
@@ -88,7 +87,7 @@ function loggerTestHelper(providedOptions) {
 }
 
 function errorLoggerTestHelper(providedOptions) {
-  var options = _.extend({
+  var options = Object.assign({
     loggerOptions: null,
     originalError: new Error('This is the Error'),
     req: null,
@@ -98,7 +97,7 @@ function errorLoggerTestHelper(providedOptions) {
   }, providedOptions);
 
   var req = mockReq(options.req);
-  var res = _.extend(mockRes(), options.res);
+  var res = Object.assign(mockRes(), options.res);
 
   var result = {
     req: req,
@@ -109,7 +108,7 @@ function errorLoggerTestHelper(providedOptions) {
   };
 
   return new Promise(function (resolve, reject) {
-    var middleware = expressWinston.errorLogger(_.extend({
+    var middleware = expressWinston.errorLogger(Object.assign({
       transports: [new MockTransport(result, options.transportOptions)]
     }, options.loggerOptions));
 

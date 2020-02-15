@@ -30,9 +30,7 @@
     "pretest": "eslint .",
     "test": "node_modules/.bin/mocha --reporter spec"
   },
-  "dependencies": {
-    "lodash": "^4.17.15"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/express": "^4.17.1",
     "eslint": "^5.16.0",

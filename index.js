@@ -20,7 +20,57 @@
 //
 var winston = require('winston');
 
-var _ = require('lodash');
+function isKey(value) {
+    const type = typeof value;
+    return type == 'number' || type == 'boolean' || value == null;
+}
+
+function pathAsArray(path) {
+    return Array.isArray(path)?
+        path : isKey(path) ? [path] : path.split(".");
+}
+
+function getBase(object, path) {
+    path = pathAsArray(path);
+
+    let index = 0
+    const length = path.length
+
+    while (object != null && index < length) {
+      object = object[path[index++]];
+    }
+    return (index && index == length) ? object : undefined;
+}
+
+function baseSet(object, path, value) {
+    if (typeof object !== 'object') {
+        return object;
+    }
+
+    path = pathAsArray(path);
+    path.reduce((prev, cur, index) => {
+        prev[cur] = prev[cur] || {};
+        if (index === path.length -1) {
+            prev[cur] = value;
+        }
+        return prev[cur];
+    }, object);
+    return object;
+}
+
+function isFunction(value) {
+    return typeof value === 'function';
+}
+
+function get(object, path, defaultValue) {
+    const result = object == null ? undefined : getBase(object, path);
+    return result === undefined ? defaultValue : result;
+}
+
+function set(object, path, value) {
+    return object == null? value : baseSet(object, path, value);
+
+}
 
 /**
  * A default list of properties in the request object that are allowed to be logged.
@@ -65,7 +115,7 @@ exports.ignoredRoutes = [];
  * @return {*}
  */
 exports.defaultRequestFilter = function (req, propName) {
-    return _.get(req, propName);
+    return get(req, propName);
 };
 
 /**
@@ -81,7 +131,7 @@ exports.defaultHeaderBlacklist = [];
  * @return {*}
  */
 exports.defaultResponseFilter = function (res, propName) {
-    return _.get(res, propName);
+    return get(res, propName);
 };
 
 /**
@@ -112,7 +162,7 @@ function filterObject(originalObj, whiteList, headerBlacklist, initialFilter) {
     [].concat(whiteList).forEach(function (propName) {
         var value = initialFilter(originalObj, propName);
         if(typeof (value) !== 'undefined') {
-            _.set(obj, propName, value);
+            set(obj, propName, value);
             fieldsSet = true;
             if (propName === 'headers') {
                 [].concat(headerBlacklist).forEach(function (headerName) {
@@ -159,7 +209,14 @@ exports.errorLogger = function errorLogger(options) {
 
     return function (err, req, res, next) {
         // Let winston gather all the error data
-        var exceptionMeta = _.omit(options.exceptionToMeta(err), options.blacklistedMetaFields);
+        const meta = options.exceptionToMeta(err);
+        var exceptionMeta = Object.keys(meta).filter(function(key) {
+            return options.blacklistedMetaFields.indexOf(key) < 0;
+        }).reduce(function (prev, cur) {
+            prev[cur] = meta[cur];
+            return prev;
+        }, {});
+
         if (options.meta !== false) {
             if (options.requestField !== null) {
                 exceptionMeta[options.requestField] = filterObject(req, options.requestWhitelist, options.headerBlacklist, options.requestFilter);
@@ -167,7 +224,7 @@ exports.errorLogger = function errorLogger(options) {
 
             if (options.dynamicMeta) {
                 var dynamicMeta = options.dynamicMeta(req, res, err);
-                exceptionMeta = _.assign(exceptionMeta, dynamicMeta);
+                exceptionMeta = Object.assign(exceptionMeta, dynamicMeta);
             }
         }
 
@@ -178,20 +235,20 @@ exports.errorLogger = function errorLogger(options) {
             } else {
                 fields = options.metaField.split('.');
             }
-            _(fields).reverse().forEach(field => {
+            fields.reverse().forEach(field => {
                 var newMeta = {};
                 newMeta[field] = exceptionMeta;
                 exceptionMeta = newMeta;
             });
         }
 
-        exceptionMeta = _.assign(exceptionMeta, options.baseMeta);
+        exceptionMeta = Object.assign(exceptionMeta, options.baseMeta);
 
-        var level = _.isFunction(options.level) ? options.level(req, res, err) : options.level;
+        var level = isFunction(options.level) ? options.level(req, res, err) : options.level;
 
         if (!options.skip(req, res, err)) {
             // This is fire and forget, we don't want logging to hold up the request so don't wait for the callback
-            options.winstonInstance.log(_.merge(exceptionMeta, {
+            options.winstonInstance.log(Object.assign(exceptionMeta, {
                 level,
                 message: options.msgFormat(req, res, err),
             }));
@@ -247,7 +304,7 @@ exports.logger = function logger(options) {
 
     return function (req, res, next) {
         var currentUrl = req.originalUrl || req.url;
-        if (currentUrl && _.includes(options.ignoredRoutes, currentUrl)) return next();
+        if (currentUrl && options.ignoredRoutes.indexOf(currentUrl) > -1) return next();
         if (options.ignoreRoute(req, res)) return next();
 
         req._startTime = (new Date);
@@ -281,14 +338,26 @@ exports.logger = function logger(options) {
                     var requestWhitelist = options.requestWhitelist.concat(req._routeWhitelists.req || []);
                     var filteredRequest = filterObject(req, requestWhitelist, options.headerBlacklist, options.requestFilter);
 
-                    var bodyWhitelist = _.union(options.bodyWhitelist, (req._routeWhitelists.body || []));
-                    var blacklist = _.union(options.bodyBlacklist, (req._routeBlacklists.body || []));
+                    var bodyWhitelist = [
+                        ...new Set([
+                            ...options.bodyWhitelist,
+                            ...(req._routeWhitelists.body || [])
+                        ])
+                    ];
+                    var blacklist = [
+                        ...new Set([
+                            ...options.bodyBlacklist,
+                            ...(req._routeBlacklists.body || [])
+                        ])
+                    ];
 
                     var filteredBody = null;
 
                     if (req.body !== undefined) {
                         if (blacklist.length > 0 && bodyWhitelist.length === 0) {
-                            var whitelist = _.difference(Object.keys(req.body), blacklist);
+                            var whitelist = Object.keys(req.body).filter(function(key) {
+                                return !blacklist.includes(key);
+                            });
                             filteredBody = filterObject(req.body, whitelist, options.headerBlacklist, options.requestFilter);
                         } else if (
                             requestWhitelist.indexOf('body') !== -1 &&
@@ -313,7 +382,7 @@ exports.logger = function logger(options) {
                 }
 
                 var responseWhitelist = options.responseWhitelist.concat(req._routeWhitelists.res || []);
-                if (_.includes(responseWhitelist, 'body')) {
+                if (responseWhitelist.indexOf('body') > -1) {
                     if (chunk) {
                         var isJson = (res.getHeader('content-type')
                             && res.getHeader('content-type').indexOf('json') >= 0);
@@ -326,7 +395,7 @@ exports.logger = function logger(options) {
                     var filteredResponse = filterObject(res, responseWhitelist, options.headerBlacklist, options.responseFilter);
                     if (filteredResponse) {
                         if (options.requestField === options.responseField) {
-                            logData[options.requestField] = _.assign(filteredRequest, filteredResponse);
+                            logData[options.requestField] = Object.assign(filteredRequest, filteredResponse);
                         } else {
                             logData[options.responseField] = filteredResponse;
                         }
@@ -339,10 +408,10 @@ exports.logger = function logger(options) {
 
                 if (options.dynamicMeta) {
                     var dynamicMeta = options.dynamicMeta(req, res);
-                    logData = _.assign(logData, dynamicMeta);
+                    logData = Object.assign(logData, dynamicMeta);
                 }
 
-                meta = _.assign(meta, logData);
+                meta = Object.assign(meta, logData);
             }
 
             if (options.metaField) {
@@ -352,21 +421,21 @@ exports.logger = function logger(options) {
                 } else {
                     fields = options.metaField.split('.');
                 }
-                _(fields).reverse().forEach(field => {
+                fields.reverse().forEach(field => {
                     var newMeta = {};
                     newMeta[field] = meta;
                     meta = newMeta;
                 });
             }
 
-            meta = _.assign(meta, options.baseMeta);
+            meta = Object.assign(meta, options.baseMeta);
 
-            var msg = options.msgFormat(req, _.assign({}, res));
+            var msg = options.msgFormat(req, Object.assign({}, res));
 
             // This is fire and forget, we don't want logging to hold up the request so don't wait for the callback
             if (!options.skip(req, res)) {
-                var level = _.isFunction(options.level) ? options.level(req, res) : options.level;
-                options.winstonInstance.log(_.merge(meta, { level, message: msg }));
+                var level = isFunction(options.level) ? options.level(req, res) : options.level;
+                options.winstonInstance.log(Object.assign(meta, { level, message: msg }));
             }
         };
 
@@ -395,13 +464,13 @@ function ensureValidOptions(options) {
     if (!((options.transports && (options.transports.length > 0)) || options.winstonInstance))
         throw new Error('transports or a winstonInstance are required by express-winston middleware');
 
-    if (options.dynamicMeta && !_.isFunction(options.dynamicMeta)) {
+    if (options.dynamicMeta && !isFunction(options.dynamicMeta)) {
         throw new Error('`dynamicMeta` express-winston option should be a function');
     }
 }
 
 function ensureValidLoggerOptions(options) {
-    if (options.ignoreRoute && !_.isFunction(options.ignoreRoute)) {
+    if (options.ignoreRoute && !isFunction(options.ignoreRoute)) {
         throw new Error('`ignoreRoute` express-winston option should be a function');
     }
 }
