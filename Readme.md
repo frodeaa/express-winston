@@ -1,5 +1,5 @@
-# express-winston
-[![Monthly Downloads](https://img.shields.io/npm/dm/express-winston.svg)](https://www.npmjs.com/package/express-winston) [![Build Status](https://secure.travis-ci.org/bithavoc/express-winston.png)](http://travis-ci.org/bithavoc/express-winston)
+# express-winston (light)
+![Node.js CI](https://github.com/frodeaa/express-winston/workflows/Node.js%20CI/badge.svg)
 
 > [winston](https://github.com/winstonjs/winston) middleware for express.js
 
