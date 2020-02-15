@@ -825,6 +825,7 @@ describe('express-winston', function () {
           loggerOptions: {
             // colorize option is not supported by this fork
             colorize: false,
+            // expressFormat is not supported by this fork
             expressFormat: true
           },
           req: {
@@ -833,8 +834,7 @@ describe('express-winston', function () {
         };
         return loggerTestHelper(testHelperOptions).then(function (result) {
           var resultMsg = result.log.msg;
-          resultMsg.should.startWith('GET /all-the-things 200 ');
-          resultMsg.should.endWith('ms');
+          resultMsg.should.eql('HTTP GET /all-the-things');
         });
       });
     });

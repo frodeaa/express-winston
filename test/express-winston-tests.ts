@@ -13,7 +13,6 @@ app.use(expressWinston.logger({
     bodyBlacklist: ['foo'],
     bodyWhitelist: ['bar'],
     dynamicMeta: (req, res, err) => ({ foo: 'bar' }),
-    expressFormat: true,
     format: new Format(),
     ignoreRoute: (req, res) => true,
     ignoredRoutes: ['foo'],

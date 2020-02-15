@@ -31,7 +31,6 @@ export interface BaseLoggerOptions {
     bodyBlacklist?: string[];
     bodyWhitelist?: string[];
     dynamicMeta?: DynamicMetaFunction;
-    expressFormat?: boolean;
     format?: Format;
     ignoreRoute?: RouteFilter;
     ignoredRoutes?: string[];

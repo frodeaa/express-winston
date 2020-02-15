@@ -129,11 +129,6 @@ function filterObject(originalObj, whiteList, headerBlacklist, initialFilter) {
 }
 
 function getTemplate(loggerOptions, templateOptions) {
-    if (loggerOptions.expressFormat) {
-        var expressMsgFormat = '{{req.method}} {{req.url}} {{res.statusCode}} {{res.responseTime}}ms';
-        return _.template(expressMsgFormat, templateOptions);
-    }
-
     if (!_.isFunction(loggerOptions.msg)) {
         return _.template(loggerOptions.msg, templateOptions);
     }
@@ -180,10 +175,6 @@ exports.errorLogger = function errorLogger(options) {
     options.blacklistedMetaFields = options.blacklistedMetaFields || [];
     options.skip = options.skip || exports.defaultSkip;
     options.requestField = options.requestField === null || options.requestField === 'null' ? null : options.requestField || exports.requestField;
-
-    // backwards comparability.
-    // just in case they're using the same options object as exports.logger.
-    options = _.omit(options, 'expressFormat');
 
     // Using mustache style templating
     var template = getTemplate(options, { interpolate: /\{\{([\s\S]+?)\}\}/g });
@@ -268,7 +259,6 @@ exports.logger = function logger(options) {
     options.msg = options.msg || 'HTTP {{req.method}} {{req.url}}';
     options.baseMeta = options.baseMeta || {};
     options.metaField = options.metaField === null || options.metaField === 'null' ? null : options.metaField || 'meta';
-    options.expressFormat = options.expressFormat || false;
     options.ignoreRoute = options.ignoreRoute || function () { return false; };
     options.skip = options.skip || exports.defaultSkip;
     options.dynamicMeta = options.dynamicMeta || function (req, res) { return null; };
