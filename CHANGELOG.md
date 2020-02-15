@@ -1,6 +1,8 @@
 ## NEXT
-* Remove support for `colorize` option and chalk dependency ([#2](https://github.com/frodeaa/express-winston/issues/2)
-* Remove support for `expressFormat` ([#8](https://github.com/frodeaa/express-winston/issues/8)
+* Remove support for `colorize` option and chalk dependency ([#2](https://github.com/frodeaa/express-winston/issues/2) - BREAKING CHANGE
+* Remove support for `expressFormat` ([#8](https://github.com/frodeaa/express-winston/issues/8) - BREAKING CHANGE
+* Remove support for `msg` ([10](https://github.com/frodeaa/express-winston/issues/10) - BREAKING CHANGE
+* Add support for `msgFormat` to customize the message logged ([10](https://github.com/frodeaa/express-winston/issues/10)
 
 ## 4.0.3
 * Update lodash to 4.17.15 ([#232](https://github.com/bithavoc/express-winston/pull/232))

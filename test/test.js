@@ -839,7 +839,7 @@ describe('express-winston', function () {
       });
     });
 
-    describe('msg option', function () {
+    describe('msgFormat option', function () {
       it('should have a default log msg', function () {
         var testHelperOptions = {
           req: {
@@ -851,38 +851,10 @@ describe('express-winston', function () {
         });
       });
 
-      it('should match the custom format when a custom format is provided', function () {
-        var testHelperOptions = {
-          loggerOptions: {
-            msg: 'Foo {{ req.method }} {{ req.url }}'
-          },
-          req: {
-            url: '/all-the-things'
-          }
-        };
-        return loggerTestHelper(testHelperOptions).then(function (result) {
-          result.log.msg.should.eql('Foo GET /all-the-things');
-        });
-      });
-
       it('can be a function', function () {
         var testHelperOptions = {
           loggerOptions: {
-            msg: function (req) { return 'fn ' + req.url; }
-          },
-          req: {
-            url: '/all-the-things'
-          }
-        };
-        return loggerTestHelper(testHelperOptions).then(function (result) {
-          result.log.msg.should.eql('fn /all-the-things');
-        });
-      });
-
-      it('can be interpolated when it is a function', function () {
-        var testHelperOptions = {
-          loggerOptions: {
-            msg: function () { return 'fn {{req.url}}'; }
+            msgFormat: function (req) { return 'fn ' + req.url; }
           },
           req: {
             url: '/all-the-things'

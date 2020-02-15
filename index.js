@@ -128,27 +128,6 @@ function filterObject(originalObj, whiteList, headerBlacklist, initialFilter) {
     return fieldsSet ? obj : undefined;
 }
 
-function getTemplate(loggerOptions, templateOptions) {
-    if (!_.isFunction(loggerOptions.msg)) {
-        return _.template(loggerOptions.msg, templateOptions);
-    }
-
-    return function (data) {
-        data = data || {};
-        var m = loggerOptions.msg(data.req, data.res);
-
-        // if there is no interpolation, don't waste resources creating a template.
-        // this quick regex is still way faster than just blindly compiling a new template.
-        if (!/\{\{/.test(m)) {
-            return m;
-        }
-        // since options.msg was a function, and the results seem to contain moustache
-        // interpolation, we'll compile a new template for each request.
-        // Warning: this eats a ton of memory under heavy load.
-        return _.template(m, templateOptions)(data);
-    };
-}
-
 //
 // ### function errorLogger(options)
 // #### @options {Object} options to initialize the middleware.
@@ -165,7 +144,9 @@ exports.errorLogger = function errorLogger(options) {
         transports: options.transports,
         format: options.format
     }));
-    options.msg = options.msg || 'middlewareError';
+    options.msgFormat = options.msgFormat || function(req, res, err) {
+        return 'middlewareError';
+    };
     options.baseMeta = options.baseMeta || {};
     options.metaField = options.metaField === null || options.metaField === 'null' ? null : options.metaField || 'meta';
     options.level = options.level || 'error';
@@ -175,9 +156,6 @@ exports.errorLogger = function errorLogger(options) {
     options.blacklistedMetaFields = options.blacklistedMetaFields || [];
     options.skip = options.skip || exports.defaultSkip;
     options.requestField = options.requestField === null || options.requestField === 'null' ? null : options.requestField || exports.requestField;
-
-    // Using mustache style templating
-    var template = getTemplate(options, { interpolate: /\{\{([\s\S]+?)\}\}/g });
 
     return function (err, req, res, next) {
         // Let winston gather all the error data
@@ -215,7 +193,7 @@ exports.errorLogger = function errorLogger(options) {
             // This is fire and forget, we don't want logging to hold up the request so don't wait for the callback
             options.winstonInstance.log(_.merge(exceptionMeta, {
                 level,
-                message: template({ err: err, req: req, res: res }),
+                message: options.msgFormat(req, res, err),
             }));
         }
 
@@ -256,7 +234,9 @@ exports.logger = function logger(options) {
     }));
     options.statusLevels = options.statusLevels || false;
     options.level = options.statusLevels ? levelFromStatus(options) : (options.level || 'info');
-    options.msg = options.msg || 'HTTP {{req.method}} {{req.url}}';
+    options.msgFormat = options.msgFormat || function(req, res) {
+        return 'HTTP ' + req.method + ' ' + req.url;
+    };
     options.baseMeta = options.baseMeta || {};
     options.metaField = options.metaField === null || options.metaField === 'null' ? null : options.metaField || 'meta';
     options.ignoreRoute = options.ignoreRoute || function () { return false; };
@@ -265,14 +245,7 @@ exports.logger = function logger(options) {
     options.requestField = options.requestField === null || options.requestField === 'null' ? null : options.requestField || exports.requestField;
     options.responseField = options.responseField === null || options.responseField === 'null' ? null : options.responseField || exports.responseField;
 
-    // Using mustache style templating
-    var template = getTemplate(options, {
-        interpolate: /\{\{(.+?)\}\}/g
-    });
-
     return function (req, res, next) {
-        var coloredRes = {};
-
         var currentUrl = req.originalUrl || req.url;
         if (currentUrl && _.includes(options.ignoredRoutes, currentUrl)) return next();
         if (options.ignoreRoute(req, res)) return next();
@@ -388,7 +361,7 @@ exports.logger = function logger(options) {
 
             meta = _.assign(meta, options.baseMeta);
 
-            var msg = template({ req: req, res: _.assign({}, res, coloredRes) });
+            var msg = options.msgFormat(req, _.assign({}, res));
 
             // This is fire and forget, we don't want logging to hold up the request so don't wait for the callback
             if (!options.skip(req, res)) {

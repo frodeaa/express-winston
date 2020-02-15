@@ -19,7 +19,7 @@ app.use(expressWinston.logger({
     level: (req, res) => 'level',
     meta: true,
     metaField: 'metaField',
-    msg: 'msg',
+    msgFormat: (req, res) => 'msg',
     requestFilter: (req, prop) => req[prop],
     requestWhitelist: ['foo', 'bar'],
     skip: (req, res) => false,
@@ -54,7 +54,7 @@ app.use(expressWinston.errorLogger({
     metaField: 'metaField',
     requestField: 'requestField',
     responseField: 'responseField',
-    msg: 'msg',
+    msgFormat: (req, res, err) => 'msg',
     requestFilter: (req, prop) => true,
     requestWhitelist: ['foo', 'bar'],
     headerBlacklist: ['foo', 'bar'],
@@ -77,16 +77,16 @@ app.use(expressWinston.errorLogger({
     winstonInstance: logger,
 }));
 
-// Request and error logger with function type msg
+// Request and error logger with function type msgFormat
 app.use(expressWinston.logger({
-    msg: (req, res) => `HTTP ${req.method} ${req.url} - ${res.statusCode}`,
+    msgFormat: (req, res) => `HTTP ${req.method} ${req.url} - ${res.statusCode}`,
     transports: [
         new winston.transports.Console({})
     ],
 }));
 
 app.use(expressWinston.errorLogger({
-    msg: (req, res) => `HTTP ${req.method} ${req.url} - ${res.statusCode}`,
+    msgFormat: (req, res, err) => `HTTP ${req.method} ${req.url} - ${res.statusCode} - ${err.message}`,
     winstonInstance: logger,
 }));
 

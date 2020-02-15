@@ -24,7 +24,8 @@ export type RequestFilter = (req: FilterRequest, propName: string) => any;
 export type ResponseFilter = (res: FilterResponse, propName: string) => any;
 export type RouteFilter = (req: Request, res: Response) => boolean;
 export type ErrorRouteFilter = (req: Request, res: Response, err: Error) => boolean;
-export type MessageTemplate = string | ((req: Request, res: Response) => string);
+export type FormatFunction = ((req: Request, res: Response) => string);
+export type FormatErrorFunction = ((req: Request, res: Response, err: Error) => string);
 
 export interface BaseLoggerOptions {
     baseMeta?: object;
@@ -39,7 +40,7 @@ export interface BaseLoggerOptions {
     metaField?: string;
     requestField?: string;
     responseField?: string;
-    msg?: MessageTemplate;
+    msgFormat?: FormatFunction;
     requestFilter?: RequestFilter;
     requestWhitelist?: string[];
     responseFilter?: ResponseFilter;
@@ -75,7 +76,7 @@ export interface BaseErrorLoggerOptions {
     metaField?: string;
     requestField?: string;
     responseField?: string;
-    msg?: MessageTemplate;
+    msgFormat?: FormatErrorFunction;
     requestFilter?: RequestFilter;
     requestWhitelist?: string[];
     headerBlacklist?: string[];
