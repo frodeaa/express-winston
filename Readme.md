@@ -5,8 +5,6 @@
 
 [Changelog](CHANGELOG.md)
 
-[CALL FOR MAINTAINERS](https://github.com/bithavoc/express-winston/issues/192)
-
 ## Installation
 
     npm install winston express-winston
@@ -54,7 +52,9 @@ Use `expressWinston.logger(options)` to create a middleware to log your HTTP req
         winston.format.json()
       ),
       meta: true, // optional: control whether you want to log the meta data about the request (default to true)
-      msg: "HTTP {{req.method}} {{req.url}}", // optional: customize the default logging message. E.g. "{{res.statusCode}} {{req.method}} {{res.responseTime}}ms {{req.url}}"
+      msgFormat: (req, res) {
+        return "HTTP " + req.method + " " + req.url;
+      }, // optional: customize the default logging message
       ignoreRoute: function (req, res) { return false; } // optional: allows to skip some log messages based on request and/or response
     }));
 
@@ -68,7 +68,7 @@ Use `expressWinston.logger(options)` to create a middleware to log your HTTP req
     format: [<logform.Format>], // formatting desired for log output.
     winstonInstance: <WinstonLogger>, // a winston logger instance. If this is provided the transports and formats options are ignored.
     level: String or function(req, res) { return String; }, // log level to use, the default is "info". Assign a  function to dynamically set the level based on request and response, or a string to statically set it always at that level. statusLevels must be false for this setting to be used.
-    msg: String or function, // customize the default logging message. E.g. "{{res.statusCode}} {{req.method}} {{res.responseTime}}ms {{req.url}}", "HTTP {{req.method}} {{req.url}}" or function(req, res) { return `${res.statusCode} - ${req.method}`.  Warning: while supported, returning mustache style interpolation from an options.msg function has performance and memory implications under load.
+    msgFormat: function(req, res), // customize the default logging message. E.g. function(req, res) { return `${res.statusCode} - ${req.method}`; }.
     meta: Boolean, // control whether you want to log the meta data about the request (default to true).
     baseMeta: Object, // default meta data to be added to log, this will be merged with the meta data.
     metaField: String, // if defined, the meta data will be added in this field instead of the meta root object. Defaults to 'meta'. Set to `null` to store metadata at the root of the log entry.
@@ -114,11 +114,11 @@ The logger needs to be added AFTER the express router(`app.router)`) and BEFORE 
     transports: [<WinstonTransport>], // list of all winston transports instances to use.
     format: [<logform.Format>], // formatting desired for log output
     winstonInstance: <WinstonLogger>, // a winston logger instance. If this is provided the transports and formats options are ignored.
-    msg: String or function // customize the default logging message. E.g. "{{err.message}} {{res.statusCode}} {{req.method}}" or function(req, res) { return `${res.statusCode} - ${req.method}` }
+    msgFormat: function(req, res, err) // customize the default logging message. E.g. function(req, res, err) { return `${res.statusCode} - ${req.method} ${err.message}`; }
     baseMeta: Object, // default meta data to be added to log, this will be merged with the error data.
     meta: Boolean, // control whether you want to log the meta data about the request (default to true).
     metaField: String, // if defined, the meta data will be added in this field instead of the meta root object. Defaults to 'meta'. Set to `null` to store metadata at the root of the log entry.
-    requestField: [String] // the property of the metadata to store the request under (default 'req'). Set to null to exclude request from metadata    
+    requestField: [String] // the property of the metadata to store the request under (default 'req'). Set to null to exclude request from metadata
     responseField: [String] // the property of the metadata to store the response under (default 'res'). If set to the same as 'requestField', filtered response and request properties will be merged. Set to null to exclude request from metadata
     requestFilter: function (req, propName) { return req[propName]; } // A function to filter/return request values, defaults to returning all values allowed by whitelist. If the function returns undefined, the key/value will not be included in the meta.
     requestWhitelist: [String] // Array of request properties to log. Overrides global requestWhitelist for this instance
@@ -136,20 +136,20 @@ Alternatively, if you're using a winston logger instance elsewhere and have alre
 
 #### `metaField` option
 
-In versions of `express-winston` prior to 4.0.0, this field functioned differently.  
+In versions of `express-winston` prior to 4.0.0, this field functioned differently.
 
-Previously the log entry would always have a "meta" field which would be set to the metadata of the request/error.  
-If `metaField` was set, this information would be stored as an object with the given property on the "meta" object of 
+Previously the log entry would always have a "meta" field which would be set to the metadata of the request/error.
+If `metaField` was set, this information would be stored as an object with the given property on the "meta" object of
 the log entry.  This prevented the use case where the metadata should be located at the root of the log entry.
 
-In this version, `metaField` defaults to "meta" which maintains the prior versions behavior of storing the metadata at 
-a "meta" property of the log entry.  
+In this version, `metaField` defaults to "meta" which maintains the prior versions behavior of storing the metadata at
+a "meta" property of the log entry.
 
 Explicitly setting the `metaField` to `null` or "null" causes the metadata to be stored at the root of the log entry.
 
 The `metaField` option now also supports dot separated and array values to store the metadata at a nested location in the log entry.
 
-<h3>Upgrade Note: For those upgrading from a version of `express-winston` prior to 4.0.0 that use the `metaField` property, to keep the same behavior, prepend `meta.` to your current `metaField` configuration. (i.e. 'foo' would become 'meta.foo')</h3> 
+<h3>Upgrade Note: For those upgrading from a version of `express-winston` prior to 4.0.0 that use the `metaField` property, to keep the same behavior, prepend `meta.` to your current `metaField` configuration. (i.e. 'foo' would become 'meta.foo')</h3>
 
 ## Examples
 
@@ -344,7 +344,7 @@ app.use(expressWinston.logger({
         httpRequest.userAgent = req.get('User-Agent')
         httpRequest.referrer = req.get('Referrer')
       }
-    
+
       if (res) {
         meta.httpRequest = httpRequest
         httpRequest.status = res.statusCode
@@ -394,7 +394,7 @@ Note that you can log the whole request and/or response body:
 
     expressWinston.requestWhitelist.push('body');
     expressWinston.responseWhitelist.push('body');
-    
+
 ### Nested Whitelists
 
 `requestWhitelist` and `responseWhitelist` also support nested whitelist values, allowing access to parts of an object.
@@ -402,7 +402,7 @@ Note that you can log the whole request and/or response body:
 For example, using the following during logger setup:
 
     expressWinston.responseWhitelist.push('body.import.value');
-    
+
 A response that looks like this :
 
     {
@@ -418,7 +418,7 @@ A response that looks like this :
             value: 3
         }
     }
-    
+
 Would only log the following value :
 
     {
@@ -558,7 +558,7 @@ If you ran into any problems, please use the project [Issues section](https://gi
 * [Jonathan Lomas](https://github.com/floatingLomas) (https://github.com/floatingLomas)
 * [Ross Brandes](https://github.com/rosston) (https://github.com/rosston)
 * [Alex Kaplan](https://github.com/kapalex) (https://github.com/kapalex)
-* [Matt Morrissette](https://github.com/yinzara) (https://github.com/yinzara) 
+* [Matt Morrissette](https://github.com/yinzara) (https://github.com/yinzara)
 
 Also see AUTHORS file, add yourself if you are missing.
 
